@@ -1,8 +1,14 @@
+**Live Website**: [https://floppy-singers-film.loca.lt](https://floppy-singers-film.loca.lt)
+
 # Wavo — Rave-Style Social Watch Platform & Mood-Based Media Discovery
 
 <div align="center">
   <img src="public/wavo-logo.png" alt="Wavo Logo" width="220" />
   <p><strong>Discover together. Watch in sync. Anywhere, on any device.</strong></p>
+
+  <p>
+    <strong>🌐 Live Deployed Website:</strong> <a href="https://floppy-singers-film.loca.lt"><strong>https://floppy-singers-film.loca.lt</strong></a>
+  </p>
 
   <p>
     <a href="#-key-features">Key Features</a> •
