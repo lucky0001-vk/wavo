@@ -1,4 +1,4 @@
-**Live Website**: [https://floppy-singers-film.loca.lt](https://floppy-singers-film.loca.lt)
+**Live Website**: [https://marks-housing-detected-agency.trycloudflare.com](https://marks-housing-detected-agency.trycloudflare.com)
 
 # Wavo — Rave-Style Social Watch Platform & Mood-Based Media Discovery
 
@@ -7,7 +7,7 @@
   <p><strong>Discover together. Watch in sync. Anywhere, on any device.</strong></p>
 
   <p>
-    <strong>🌐 Live Deployed Website:</strong> <a href="https://floppy-singers-film.loca.lt"><strong>https://floppy-singers-film.loca.lt</strong></a>
+    <strong>🌐 Live Deployed Website:</strong> <a href="https://marks-housing-detected-agency.trycloudflare.com"><strong>https://marks-housing-detected-agency.trycloudflare.com</strong></a>
   </p>
 
   <p>
@@ -121,7 +121,7 @@ npm start
 
 To test on your Android phone or share with friends across devices:
 - **Local Wi-Fi**: Start with `npm start -- -H 0.0.0.0 -p 3000` and visit `http://<your-lan-ip>:3000`.
-- **Public HTTPS Tunnel**: Run `npx localtunnel --port 3000` to share a public link accessible from any mobile cellular network.
+- **Public HTTPS Tunnel**: Run `.\cloudflared.exe tunnel --url http://localhost:3000` to share a direct, high-speed edge link with zero interstitials.
 
 ---
 
