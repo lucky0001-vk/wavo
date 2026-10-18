@@ -28,7 +28,7 @@ export const Navbar: React.FC = () => {
 
   return (
     <>
-      <header className="sticky top-0 z-40 w-full border-b border-cinema-800/80 bg-cinema-950/85 backdrop-blur-xl">
+      <header className="sticky top-0 z-40 w-full border-b border-surface-container-highest/60 bg-surface-container-lowest/80 backdrop-blur-2xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
           {/* Brand Logo */}
           <Link href="/" className="flex items-center group">
@@ -36,41 +36,41 @@ export const Navbar: React.FC = () => {
           </Link>
 
           {/* Center Navigation Links (Desktop) */}
-          <nav className="hidden md:flex items-center gap-1 bg-cinema-900/60 border border-cinema-800/70 p-1 rounded-full">
+          <nav className="hidden md:flex items-center gap-1 bg-surface-container-low/80 border border-surface-container-highest/60 p-1 rounded-full backdrop-blur-md">
             <Link
               href="/"
-              className="px-4 py-1.5 rounded-full text-xs font-medium text-cinema-300 hover:text-white hover:bg-cinema-800/80 transition-colors"
+              className="px-3.5 py-1.5 rounded-full text-xs font-medium text-slate-300 hover:text-white hover:bg-surface-container-high transition-colors"
             >
               Moods
             </Link>
             <Link
               href="/discover"
-              className="px-4 py-1.5 rounded-full text-xs font-medium text-cinema-300 hover:text-white hover:bg-cinema-800/80 transition-colors"
+              className="px-3.5 py-1.5 rounded-full text-xs font-medium text-slate-300 hover:text-white hover:bg-surface-container-high transition-colors"
             >
               Discover
             </Link>
             <Link
               href="/media-browser"
-              className="px-4 py-1.5 rounded-full text-xs font-medium text-cinema-300 hover:text-white hover:bg-cinema-800/80 transition-colors flex items-center gap-1.5"
+              className="px-3.5 py-1.5 rounded-full text-xs font-medium text-slate-300 hover:text-white hover:bg-surface-container-high transition-colors flex items-center gap-1.5"
             >
-              <Compass size={14} />
+              <Compass size={14} className="text-secondary" />
               <span>Media Browser</span>
             </Link>
             <Link
               href="/watch-together"
-              className="px-4 py-1.5 rounded-full text-xs font-medium text-amber-cinema hover:text-amber-hover hover:bg-amber-cinema/10 transition-colors flex items-center gap-1.5"
+              className="px-3.5 py-1.5 rounded-full text-xs font-medium text-secondary hover:text-white hover:bg-secondary/10 transition-colors flex items-center gap-1.5"
             >
               <Users size={14} />
               <span>Watch Together</span>
             </Link>
             <Link
               href="/watchlist"
-              className="px-4 py-1.5 rounded-full text-xs font-medium text-cinema-300 hover:text-white hover:bg-cinema-800/80 transition-colors flex items-center gap-1.5"
+              className="px-3.5 py-1.5 rounded-full text-xs font-medium text-slate-300 hover:text-white hover:bg-surface-container-high transition-colors flex items-center gap-1.5"
             >
               <Bookmark size={14} />
               <span>Watchlist</span>
               {watchlist.length > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full bg-cinema-750 text-cinema-200 text-[10px] font-mono">
+                <span className="px-1.5 py-0.2 rounded-full bg-primary-container/20 text-primary text-[10px] font-mono border border-primary/30">
                   {watchlist.length}
                 </span>
               )}
@@ -78,48 +78,65 @@ export const Navbar: React.FC = () => {
           </nav>
 
           {/* Right Actions */}
-          <div className="hidden sm:flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-2.5">
+            {/* Live Synchrony Latency Pill */}
+            <div className="hidden xl:flex items-center gap-2 px-3 py-1 rounded-full bg-surface-container-high/60 border border-outline-variant/30 text-[11px] font-mono">
+              <span className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
+              <span className="text-slate-300">Synced (0.0s delay)</span>
+              <span className="text-outline/40">|</span>
+              <span className="text-secondary font-bold">#NOVA-482</span>
+            </div>
+
             {/* Quick Room Code Input */}
             <form onSubmit={handleQuickJoin} className="relative">
               <input
                 type="text"
-                placeholder="Code: MOON-582"
+                placeholder="Code: NOVA-482"
                 value={quickCode}
                 onChange={(e) => setQuickCode(e.target.value.toUpperCase())}
-                className="w-36 pl-3 pr-7 py-1.5 rounded-xl bg-cinema-900 border border-cinema-750 text-cinema-100 placeholder-cinema-500 text-xs font-mono uppercase focus:outline-none focus:border-amber-cinema/70 transition-colors"
+                className="w-36 pl-3 pr-7 py-1.5 rounded-xl bg-surface-container-high/60 border border-surface-container-highest text-white placeholder-slate-400 text-xs font-mono uppercase focus:outline-none focus:border-secondary transition-colors"
               />
               <button
                 type="submit"
-                className="absolute right-1.5 top-1.5 p-1 rounded-lg text-cinema-400 hover:text-amber-cinema transition-colors"
+                className="absolute right-1.5 top-1.5 p-1 rounded-lg text-slate-400 hover:text-secondary transition-colors"
                 title="Join Room"
               >
                 <ArrowRight size={13} />
               </button>
             </form>
 
+            {/* Watch Together Action Button */}
+            <Link
+              href="/watch-together"
+              className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-primary-container via-primary-container to-secondary text-white font-bold text-xs shadow-md shadow-primary-container/20 hover:brightness-110 transition-all flex items-center gap-1.5"
+            >
+              <Users size={13} />
+              <span>Watch Together</span>
+            </Link>
+
             {/* User Profile / Auth Button */}
             {user ? (
               <div className="relative">
                 <button
                   onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                  className="flex items-center gap-2.5 p-1.5 pr-3 rounded-full bg-cinema-900 border border-cinema-800 hover:border-cinema-700 transition-colors text-left"
+                  className="flex items-center gap-2.5 p-1.5 pr-3 rounded-full bg-surface-container-high/70 border border-surface-container-highest hover:border-outline-variant transition-colors text-left"
                 >
                   {user.avatarUrl ? (
                     <img
                       src={user.avatarUrl}
                       alt={user.displayName}
-                      className="w-7 h-7 rounded-full object-cover border border-amber-cinema/30"
+                      className="w-7 h-7 rounded-full object-cover border border-secondary/40"
                     />
                   ) : (
-                    <div className="w-7 h-7 rounded-full bg-amber-cinema/20 text-amber-cinema flex items-center justify-center text-xs font-semibold">
+                    <div className="w-7 h-7 rounded-full bg-primary-container/30 text-primary flex items-center justify-center text-xs font-semibold">
                       {user.displayName.charAt(0).toUpperCase()}
                     </div>
                   )}
                   <div className="flex flex-col">
-                    <span className="text-xs font-medium text-cinema-100 leading-tight">
+                    <span className="text-xs font-medium text-slate-100 leading-tight">
                       {user.displayName}
                     </span>
-                    <span className="text-[10px] text-cinema-500 leading-none">
+                    <span className="text-[10px] text-slate-400 leading-none">
                       {user.isGuest ? 'Guest' : 'Member'}
                     </span>
                   </div>
@@ -127,16 +144,16 @@ export const Navbar: React.FC = () => {
 
                 {/* Dropdown Menu */}
                 {profileDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-cinema-850 border border-cinema-700/80 rounded-2xl shadow-cinema-card py-2 text-cinema-200 text-xs z-50 animate-fade-in">
-                    <div className="px-3 py-2 border-b border-cinema-750">
-                      <p className="font-medium text-cinema-50 truncate">{user.displayName}</p>
-                      <p className="text-[10px] text-cinema-500 truncate">{user.email || 'Guest Explorer'}</p>
+                  <div className="absolute right-0 mt-2 w-52 bg-surface-container border border-surface-container-highest rounded-2xl shadow-2xl py-2 text-slate-200 text-xs z-50 animate-fade-in backdrop-blur-xl">
+                    <div className="px-3 py-2 border-b border-surface-container-highest">
+                      <p className="font-medium text-white truncate">{user.displayName}</p>
+                      <p className="text-[10px] text-slate-400 truncate">{user.email || 'Guest Explorer'}</p>
                     </div>
 
                     <Link
                       href="/preferences"
                       onClick={() => setProfileDropdownOpen(false)}
-                      className="flex items-center gap-2 px-3 py-2 hover:bg-cinema-800 hover:text-white transition-colors"
+                      className="flex items-center gap-2 px-3 py-2 hover:bg-surface-container-high hover:text-white transition-colors"
                     >
                       <Settings size={14} />
                       <span>Preferences & Profile</span>
@@ -145,7 +162,7 @@ export const Navbar: React.FC = () => {
                     <Link
                       href="/watchlist"
                       onClick={() => setProfileDropdownOpen(false)}
-                      className="flex items-center gap-2 px-3 py-2 hover:bg-cinema-800 hover:text-white transition-colors"
+                      className="flex items-center gap-2 px-3 py-2 hover:bg-surface-container-high hover:text-white transition-colors"
                     >
                       <Bookmark size={14} />
                       <span>Saved Movies ({watchlist.length})</span>
@@ -154,9 +171,9 @@ export const Navbar: React.FC = () => {
                     <Link
                       href="/admin"
                       onClick={() => setProfileDropdownOpen(false)}
-                      className="flex items-center gap-2 px-3 py-2 hover:bg-cinema-800 text-cinema-300 hover:text-white transition-colors border-t border-cinema-750"
+                      className="flex items-center gap-2 px-3 py-2 hover:bg-surface-container-high text-slate-300 hover:text-white transition-colors border-t border-surface-container-highest"
                     >
-                      <Shield size={14} className="text-amber-cinema" />
+                      <Shield size={14} className="text-secondary" />
                       <span>Admin & Health</span>
                     </Link>
 
@@ -166,7 +183,7 @@ export const Navbar: React.FC = () => {
                           setProfileDropdownOpen(false);
                           setAuthModalOpen(true);
                         }}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-amber-cinema hover:bg-cinema-800 transition-colors"
+                        className="w-full flex items-center gap-2 px-3 py-2 text-secondary hover:bg-surface-container-high transition-colors"
                       >
                         <LogIn size={14} />
                         <span>Sign In / Create Account</span>
@@ -177,7 +194,7 @@ export const Navbar: React.FC = () => {
                           setProfileDropdownOpen(false);
                           signOut();
                         }}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-red-400 hover:bg-cinema-800 transition-colors"
+                        className="w-full flex items-center gap-2 px-3 py-2 text-red-400 hover:bg-surface-container-high transition-colors"
                       >
                         <LogOut size={14} />
                         <span>Sign Out</span>
@@ -189,7 +206,7 @@ export const Navbar: React.FC = () => {
             ) : (
               <button
                 onClick={() => setAuthModalOpen(true)}
-                className="px-4 py-1.5 rounded-full bg-amber-cinema hover:bg-amber-hover text-cinema-950 font-medium text-xs transition-colors shadow-glow-amber"
+                className="px-3.5 py-1.5 rounded-full bg-surface-container-high hover:bg-surface-container-highest text-white font-semibold text-xs border border-surface-container-highest transition-colors"
               >
                 Sign In
               </button>
@@ -200,7 +217,7 @@ export const Navbar: React.FC = () => {
           <div className="flex md:hidden items-center gap-2">
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-xl text-cinema-400 hover:text-white hover:bg-cinema-850"
+              className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-surface-container-high transition-colors"
               aria-label="Toggle menu"
             >
               {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
@@ -210,18 +227,18 @@ export const Navbar: React.FC = () => {
 
         {/* Mobile Dropdown Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-t border-cinema-800 bg-cinema-950 px-4 py-4 space-y-3">
+          <div className="md:hidden border-t border-surface-container-highest/60 bg-surface-container-lowest/95 backdrop-blur-xl px-4 py-4 space-y-3">
             <form onSubmit={handleQuickJoin} className="relative">
               <input
                 type="text"
-                placeholder="Enter Room Code (e.g. MOON-582)"
+                placeholder="Enter Room Code (e.g. NOVA-482)"
                 value={quickCode}
                 onChange={(e) => setQuickCode(e.target.value.toUpperCase())}
-                className="w-full pl-3 pr-10 py-2.5 rounded-xl bg-cinema-900 border border-cinema-750 text-cinema-100 placeholder-cinema-500 text-xs font-mono uppercase focus:outline-none focus:border-amber-cinema/70"
+                className="w-full pl-3 pr-10 py-2.5 rounded-xl bg-surface-container-high/60 border border-surface-container-highest text-white placeholder-slate-400 text-xs font-mono uppercase focus:outline-none focus:border-secondary"
               />
               <button
                 type="submit"
-                className="absolute right-2 top-2 p-1 rounded-lg text-amber-cinema"
+                className="absolute right-2 top-2 p-1 rounded-lg text-secondary"
               >
                 <ArrowRight size={16} />
               </button>
@@ -231,58 +248,58 @@ export const Navbar: React.FC = () => {
               <Link
                 href="/"
                 onClick={() => setMobileMenuOpen(false)}
-                className="min-h-[44px] p-2.5 rounded-xl bg-cinema-900 text-xs text-cinema-200 flex items-center justify-center font-medium"
+                className="min-h-[44px] p-2.5 rounded-xl bg-surface-container-low text-xs text-slate-200 hover:bg-surface-container-high flex items-center justify-center font-medium"
               >
                 Moods
               </Link>
               <Link
                 href="/discover"
                 onClick={() => setMobileMenuOpen(false)}
-                className="min-h-[44px] p-2.5 rounded-xl bg-cinema-900 text-xs text-cinema-200 flex items-center justify-center font-medium"
+                className="min-h-[44px] p-2.5 rounded-xl bg-surface-container-low text-xs text-slate-200 hover:bg-surface-container-high flex items-center justify-center font-medium"
               >
                 Discover
               </Link>
               <Link
                 href="/media-browser"
                 onClick={() => setMobileMenuOpen(false)}
-                className="min-h-[44px] p-2.5 rounded-xl bg-cinema-900 text-xs text-cinema-200 flex items-center justify-center font-medium"
+                className="min-h-[44px] p-2.5 rounded-xl bg-surface-container-low text-xs text-slate-200 hover:bg-surface-container-high flex items-center justify-center font-medium"
               >
                 Media Browser
               </Link>
               <Link
                 href="/watch-together"
                 onClick={() => setMobileMenuOpen(false)}
-                className="min-h-[44px] p-2.5 rounded-xl bg-amber-cinema/15 border border-amber-cinema/30 text-xs text-amber-cinema flex items-center justify-center font-medium"
+                className="min-h-[44px] p-2.5 rounded-xl bg-gradient-to-r from-primary-container/20 to-secondary/20 border border-secondary/40 text-xs text-secondary flex items-center justify-center font-medium"
               >
                 Watch Together
               </Link>
               <Link
                 href="/watchlist"
                 onClick={() => setMobileMenuOpen(false)}
-                className="min-h-[44px] p-2.5 rounded-xl bg-cinema-900 text-xs text-cinema-200 flex items-center justify-center font-medium"
+                className="min-h-[44px] p-2.5 rounded-xl bg-surface-container-low text-xs text-slate-200 hover:bg-surface-container-high flex items-center justify-center font-medium"
               >
                 Watchlist ({watchlist.length})
               </Link>
               <Link
                 href="/admin"
                 onClick={() => setMobileMenuOpen(false)}
-                className="min-h-[44px] p-2.5 rounded-xl bg-cinema-900 text-xs text-cinema-200 flex items-center justify-center font-medium"
+                className="min-h-[44px] p-2.5 rounded-xl bg-surface-container-low text-xs text-slate-200 hover:bg-surface-container-high flex items-center justify-center font-medium"
               >
                 Admin
               </Link>
             </div>
 
-            <div className="pt-2 border-t border-cinema-800">
+            <div className="pt-2 border-t border-surface-container-highest/60">
               {user ? (
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-cinema-200">{user.displayName}</span>
-                    <span className="text-[10px] text-cinema-500">({user.isGuest ? 'Guest' : 'Member'})</span>
+                    <span className="text-xs text-slate-200">{user.displayName}</span>
+                    <span className="text-[10px] text-slate-400">({user.isGuest ? 'Guest' : 'Member'})</span>
                   </div>
                   <Link
                     href="/preferences"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="text-xs text-amber-cinema hover:underline"
+                    className="text-xs text-secondary hover:underline"
                   >
                     Profile & Settings
                   </Link>
@@ -293,7 +310,7 @@ export const Navbar: React.FC = () => {
                     setMobileMenuOpen(false);
                     setAuthModalOpen(true);
                   }}
-                  className="w-full py-2.5 rounded-xl bg-amber-cinema text-cinema-950 font-semibold text-xs text-center"
+                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-primary-container to-secondary text-white font-semibold text-xs text-center shadow-md shadow-primary-container/20"
                 >
                   Sign In / Create Account
                 </button>

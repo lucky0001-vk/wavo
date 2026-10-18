@@ -9,35 +9,73 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        // Design System Colors from Mockup
+        background: '#11131b',
+        surface: '#11131b',
+        'surface-bright': '#373942',
+        'surface-dim': '#11131b',
+        'surface-variant': '#33343e',
+        'surface-container-lowest': '#0c0e16',
+        'surface-container-low': '#191b24',
+        'surface-container': '#1d1f28',
+        'surface-container-high': '#282a32',
+        'surface-container-highest': '#33343e',
+        'on-surface': '#e2e1ee',
+        'on-surface-variant': '#c7c4d7',
+        outline: '#908fa0',
+        'outline-variant': '#464554',
+        primary: '#c0c1ff',
+        'primary-container': '#8083ff',
+        'on-primary': '#1000a9',
+        'on-primary-container': '#0d0096',
+        'primary-fixed': '#e1e0ff',
+        'primary-fixed-dim': '#c0c1ff',
+        secondary: '#4cd7f6',
+        'secondary-container': '#03b5d3',
+        'on-secondary': '#003640',
+        'on-secondary-container': '#00424e',
+        'secondary-fixed': '#acedff',
+        'secondary-fixed-dim': '#4cd7f6',
+        tertiary: '#ffb0cd',
+        'tertiary-container': '#f751a1',
+        'on-tertiary': '#640039',
+        'on-tertiary-container': '#570032',
+        'tertiary-fixed': '#ffd9e4',
+        'tertiary-fixed-dim': '#ffb0cd',
+
+        // Core Cinematic Palette
         cinema: {
-          950: '#08090B', // Near black main background
+          950: '#08090B',
           900: '#0E1015',
-          850: '#14161B', // Dark charcoal card surface
+          850: '#14161B',
           800: '#1B1E26',
           750: '#222631',
           700: '#2A303D',
           600: '#3E4656',
           500: '#64748B',
-          400: '#94A3B8', // Muted secondary text
+          400: '#94A3B8',
           300: '#CBD5E1',
           200: '#E2E8F0',
           100: '#F1F5F9',
-          50: '#F8FAFC', // Soft white primary text
+          50: '#F8FAFC',
         },
         amber: {
-          cinema: '#D6A85F', // Signature warm amber accent
+          cinema: '#D6A85F',
           hover: '#E5BA75',
           glow: 'rgba(214, 168, 95, 0.25)',
           muted: 'rgba(214, 168, 95, 0.15)',
-        }
+        },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        sans: ['"Plus Jakarta Sans"', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
       },
       boxShadow: {
         'glow-amber': '0 0 25px -5px rgba(214, 168, 95, 0.3)',
         'glow-amber-lg': '0 0 45px -8px rgba(214, 168, 95, 0.45)',
         'cinema-card': '0 10px 30px -10px rgba(0, 0, 0, 0.7)',
+        'glow-cyan': '0 0 30px rgba(76, 215, 246, 0.4)',
+        'glow-violet': '0 0 30px rgba(128, 131, 255, 0.4)',
+        'glow-pink': '0 0 30px rgba(247, 81, 161, 0.4)',
       },
       animation: {
         'pulse-subtle': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
@@ -52,9 +90,9 @@ module.exports = {
         fadeIn: {
           '0%': { opacity: '0', transform: 'translateY(6px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
-        }
-      }
+        },
+      },
     },
   },
   plugins: [],
-}
+};
