@@ -1,0 +1,49 @@
+{
+  "name": "Wavo — Social Watch & Cinema",
+  "short_name": "Wavo",
+  "description": "Discover films by mood and watch together in real time with synchronized playback on mobile and desktop.",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#08090B",
+  "theme_color": "#08090B",
+  "icons": [
+    {
+      "src": "/wavo-icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/wavo-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/wavo-logo.png",
+      "sizes": "1000x296",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["entertainment", "movies", "social"],
+  "shortcuts": [
+    {
+      "name": "Watch Together",
+      "url": "/watch-together",
+      "description": "Create or join a watch party room"
+    },
+    {
+      "name": "Media Browser",
+      "url": "/media-browser",
+      "description": "Browse streaming providers and local videos"
+    },
+    {
+      "name": "Discover",
+      "url": "/discover",
+      "description": "Discover movies by emotional mood"
+    }
+  ]
+}
