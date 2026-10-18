@@ -74,7 +74,20 @@ export async function createWatchRoom(options: {
 
   saveLocalRoom(newRoom);
 
-  // If Supabase is configured, sync to database
+  // Sync to Next.js server registry so any device (phone, laptop) can access it
+  if (typeof window !== 'undefined') {
+    try {
+      fetch('/api/rooms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newRoom),
+      }).catch((e) => console.warn('Server room sync warning:', e));
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  // If Supabase is configured, also mirror to database
   const supabase = getSupabaseClient();
   if (supabase) {
     try {
@@ -96,7 +109,7 @@ export async function createWatchRoom(options: {
         },
       ]);
     } catch (e) {
-      console.warn('Supabase room insert failed, continuing with local sync:', e);
+      console.warn('Supabase room insert notice, continuing with universal sync:', e);
     }
   }
 
@@ -107,9 +120,10 @@ export async function createWatchRoom(options: {
  * Fetches room by room code with validation
  */
 export async function fetchWatchRoom(code: string): Promise<WatchRoom | null> {
+  if (!code || typeof code !== 'string') return null;
   const normalizedCode = code.trim().toUpperCase();
 
-  // Check in-memory map or local storage
+  // 1. Check in-memory map or local storage
   if (localRoomsMap.has(normalizedCode)) {
     return localRoomsMap.get(normalizedCode)!;
   }
@@ -118,6 +132,23 @@ export async function fetchWatchRoom(code: string): Promise<WatchRoom | null> {
     return localRooms[normalizedCode];
   }
 
+  // 2. Query Next.js server registry (cross-device lookup for phone/other browsers)
+  if (typeof window !== 'undefined') {
+    try {
+      const res = await fetch(`/api/rooms/${encodeURIComponent(normalizedCode)}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.room) {
+          saveLocalRoom(json.room);
+          return json.room;
+        }
+      }
+    } catch (e) {
+      console.warn('Server room lookup fallback notice:', e);
+    }
+  }
+
+  // 3. Query Supabase if configured
   const supabase = getSupabaseClient();
   if (supabase) {
     try {
@@ -129,7 +160,6 @@ export async function fetchWatchRoom(code: string): Promise<WatchRoom | null> {
         .single();
 
       if (data && !error) {
-        // Map from DB row to WatchRoom
         const movie: Movie = {
           id: data.media_id,
           title: data.media_title,
@@ -175,7 +205,7 @@ export async function fetchWatchRoom(code: string): Promise<WatchRoom | null> {
     }
   }
 
-  // Demo fallback: If code has standard format (e.g. MOON-582, NOVA-482) create instant mock room
+  // 4. Demo fallback: If code has standard format (e.g. MOON-582, NOVA-482) create instant mock room
   if (/^[A-Z0-9]{3,6}-[0-9]{3,4}$/.test(normalizedCode)) {
     const movie = CURATED_MOVIES[Math.abs(normalizedCode.charCodeAt(0)) % CURATED_MOVIES.length];
     const mockRoom: WatchRoom = {
@@ -212,7 +242,7 @@ export type RoomEventCallback = {
 };
 
 /**
- * Manages real-time room communication (Supabase Realtime + BroadcastChannel fallback)
+ * Manages real-time room communication (Universal HTTP Event Bus + Supabase Realtime + BroadcastChannel)
  */
 export class RealtimeRoomSession {
   private roomCode: string;
@@ -223,6 +253,9 @@ export class RealtimeRoomSession {
   private broadcastChannel: BroadcastChannel | null = null;
   private supabaseChannel: any = null;
   private participants: Map<string, RoomParticipant> = new Map();
+  private httpPollTimer: any = null;
+  private lastEventTimestamp = Date.now();
+  private isDestroyed = false;
 
   constructor(
     roomCode: string,
@@ -251,7 +284,7 @@ export class RealtimeRoomSession {
     };
     this.participants.set(this.userId, currentParticipant);
 
-    // 1. Setup local BroadcastChannel (handles inter-tab / window sync on same client)
+    // 1. Setup local BroadcastChannel (instant inter-tab sync on same machine)
     if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
       try {
         this.broadcastChannel = new BroadcastChannel(`watch_room_${this.roomCode}`);
@@ -288,12 +321,54 @@ export class RealtimeRoomSession {
 
         this.supabaseChannel = channel;
       } catch (err) {
-        console.warn('Supabase realtime channel failed:', err);
+        console.warn('Supabase realtime channel notice:', err);
       }
     }
 
+    // 3. Universal Cross-Device HTTP Sync (Works between PC, Phone, Tablet anywhere)
+    this.startHttpSync();
+
     // Broadcast self presence
     this.broadcastPresence();
+  }
+
+  private startHttpSync() {
+    if (typeof window === 'undefined') return;
+
+    const poll = async () => {
+      if (this.isDestroyed) return;
+      try {
+        const res = await fetch(
+          `/api/rooms/${encodeURIComponent(this.roomCode)}/sync?since=${this.lastEventTimestamp}&userId=${encodeURIComponent(this.userId)}`
+        );
+        if (res.ok) {
+          const data = await res.json();
+          if (data.events && Array.isArray(data.events)) {
+            for (const ev of data.events) {
+              this.lastEventTimestamp = Math.max(this.lastEventTimestamp, ev.timestamp);
+              // Avoid re-processing events we originated locally
+              if (ev.payload?.userId !== this.userId) {
+                this.handleIncomingPayload(ev);
+              }
+            }
+          }
+          if (data.participants && Array.isArray(data.participants)) {
+            for (const p of data.participants) {
+              this.participants.set(p.id, p);
+            }
+            this.callbacks.onParticipantChange(Array.from(this.participants.values()));
+          }
+          if (!this.isHost && data.playback) {
+            this.callbacks.onPlaybackChange(data.playback);
+          }
+        }
+      } catch (e) {
+        // Transient network jitter, will retry on next tick
+      }
+    };
+
+    // Poll every 850ms for low-latency synchronization across devices
+    this.httpPollTimer = setInterval(poll, 850);
   }
 
   private handleIncomingPayload(data: any) {
@@ -369,6 +444,7 @@ export class RealtimeRoomSession {
       id: `rx-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       emoji,
       nickname: this.nickname,
+      userId: this.userId,
     };
 
     this.callbacks.onReaction(reactionPayload);
@@ -380,7 +456,7 @@ export class RealtimeRoomSession {
   }
 
   private sendPayload(data: any) {
-    // 1. BroadcastChannel
+    // 1. Local BroadcastChannel
     if (this.broadcastChannel) {
       try {
         this.broadcastChannel.postMessage(data);
@@ -398,12 +474,30 @@ export class RealtimeRoomSession {
           payload: data.payload,
         });
       } catch (err) {
-        console.warn('Supabase broadcast send failed:', err);
+        console.warn('Supabase broadcast send notice:', err);
+      }
+    }
+
+    // 3. Universal Server Event Bus
+    if (typeof window !== 'undefined') {
+      try {
+        fetch(`/api/rooms/${encodeURIComponent(this.roomCode)}/sync`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        }).catch(() => {});
+      } catch (e) {
+        // ignore
       }
     }
   }
 
   public leave() {
+    this.isDestroyed = true;
+    if (this.httpPollTimer) {
+      clearInterval(this.httpPollTimer);
+      this.httpPollTimer = null;
+    }
     if (this.broadcastChannel) {
       this.broadcastChannel.close();
       this.broadcastChannel = null;

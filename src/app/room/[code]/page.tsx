@@ -10,14 +10,14 @@ import { UniversalVideoPlayer } from '@/components/UniversalVideoPlayer';
 import { RoomChat } from '@/components/RoomChat';
 import { RoomQrCodeModal } from '@/components/RoomQrCodeModal';
 import { FloatingReaction } from '@/components/EmojiReactionOverlay';
-import { Copy, Share2, Users, MessageSquare, LogOut, Crown, Check, AlertCircle, Sparkles, RefreshCw, FolderOpen, ShieldCheck, QrCode } from 'lucide-react';
+import { Copy, Share2, Users, MessageSquare, LogOut, Crown, Check, AlertCircle, Sparkles, RefreshCw, FolderOpen, ShieldCheck, QrCode, Film, Info } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 export default function RoomPage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
 
   const roomCode = (params?.code as string)?.toUpperCase();
   const nicknameParam = searchParams.get('nickname');
@@ -33,7 +33,6 @@ export default function RoomPage() {
   const [copied, setCopied] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
   const [mobileTab, setMobileTab] = useState<'chat' | 'details'>('chat');
-  const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
   const [localVideoFile, setLocalVideoFile] = useState<{ file: File; blobUrl: string } | null>(null);
   const localFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -43,8 +42,10 @@ export default function RoomPage() {
     nicknameParam || user?.displayName || `Viewer_${Math.floor(100 + Math.random() * 900)}`;
   const currentUserId = user?.id || `usr_${currentNickname}`;
 
-  // 1. Fetch Room Details
+  // 1. Fetch Room Details and initialize session
   useEffect(() => {
+    let isCancelled = false;
+
     async function initRoom() {
       if (!roomCode) return;
       setLoading(true);
@@ -52,8 +53,10 @@ export default function RoomPage() {
 
       try {
         const found = await fetchWatchRoom(roomCode);
+        if (isCancelled) return;
+
         if (!found) {
-          setErrorMsg('This room has ended or the invitation code is invalid.');
+          setErrorMsg('This watch room has concluded or the code is invalid.');
           setLoading(false);
           return;
         }
@@ -61,9 +64,18 @@ export default function RoomPage() {
         setRoom(found);
         setPlaybackState(found.playback);
 
-        const isHost = found.hostId === currentUserId;
+        const isHost =
+          found.hostId === currentUserId ||
+          Boolean(user?.id && found.hostId === user.id) ||
+          found.hostNickname === currentNickname;
 
-        // Initialize Realtime session
+        // Clean up any existing session
+        if (sessionRef.current) {
+          sessionRef.current.leave();
+          sessionRef.current = null;
+        }
+
+        // Initialize Universal Realtime session
         const session = new RealtimeRoomSession(roomCode, currentUserId, currentNickname, isHost, {
           onPlaybackChange: (newPlayback) => {
             setPlaybackState(newPlayback);
@@ -72,7 +84,10 @@ export default function RoomPage() {
             setParticipants(newParticipants);
           },
           onChatMessage: (message) => {
-            setMessages((prev) => [...prev, message]);
+            setMessages((prev) => {
+              if (prev.some((m) => m.id === message.id)) return prev;
+              return [...prev, message];
+            });
           },
           onReaction: (rx) => {
             // Trigger floating reaction animation
@@ -84,7 +99,7 @@ export default function RoomPage() {
             };
             setFloatingReactions((prev) => [...prev, newFloating]);
 
-            // Add reaction message to chat stream
+            // Add reaction event to chat stream
             setMessages((prev) => [
               ...prev,
               {
@@ -107,9 +122,11 @@ export default function RoomPage() {
         sessionRef.current = session;
       } catch (err: any) {
         console.error('Room init error:', err);
-        setErrorMsg('Failed to connect to the watch room.');
+        if (!isCancelled) {
+          setErrorMsg('Failed to establish connection to watch room.');
+        }
       } finally {
-        setLoading(false);
+        if (!isCancelled) setLoading(false);
       }
     }
 
@@ -120,7 +137,7 @@ export default function RoomPage() {
       if (document.visibilityState === 'visible' && roomCode) {
         try {
           const fresh = await fetchWatchRoom(roomCode);
-          if (fresh) {
+          if (fresh && !isCancelled) {
             setPlaybackState(fresh.playback);
           }
         } catch (e) {
@@ -132,12 +149,22 @@ export default function RoomPage() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
+      isCancelled = true;
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (sessionRef.current) {
         sessionRef.current.leave();
+        sessionRef.current = null;
       }
     };
-  }, [roomCode]);
+  }, [roomCode, user?.id]);
+
+  // Determine host status
+  const isHost = Boolean(
+    room &&
+      (room.hostId === currentUserId ||
+        (user?.id && room.hostId === user.id) ||
+        room.hostNickname === currentNickname)
+  );
 
   // Host playback update action
   const handleHostUpdatePlayback = (action: 'play' | 'pause' | 'seek', position?: number) => {
@@ -189,7 +216,7 @@ export default function RoomPage() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (e) {
-      console.warn('Copy invite error:', e);
+      console.warn('Copy invite notice:', e);
     }
   };
 
@@ -251,8 +278,6 @@ export default function RoomPage() {
     );
   }
 
-  const isHost = room.hostId === currentUserId;
-
   return (
     <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
       {/* Top Room Toolbar */}
@@ -291,7 +316,7 @@ export default function RoomPage() {
 
           <button
             onClick={handleCopyInvite}
-            className="p-2 rounded-xl bg-cinema-900 hover:bg-cinema-800 border border-cinema-700 text-cinema-300 hover:text-white transition-colors"
+            className="p-2 rounded-xl bg-cinema-900 hover:bg-cinema-800 border border-cinema-700 text-cinema-300 hover:text-white transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center"
             title="Copy invitation link"
           >
             {copied ? <Check size={16} className="text-emerald-400" /> : <Copy size={16} />}
@@ -299,7 +324,7 @@ export default function RoomPage() {
 
           <button
             onClick={handleShare}
-            className="p-2 rounded-xl bg-cinema-900 hover:bg-cinema-800 border border-cinema-700 text-cinema-300 hover:text-white transition-colors"
+            className="p-2 rounded-xl bg-cinema-900 hover:bg-cinema-800 border border-cinema-700 text-cinema-300 hover:text-white transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center"
             title="Share room invitation"
           >
             <Share2 size={16} />
@@ -307,27 +332,18 @@ export default function RoomPage() {
 
           <button
             onClick={() => setShowQrModal(true)}
-            className="p-2 rounded-xl bg-cinema-900 hover:bg-cinema-800 border border-cinema-700 text-cinema-300 hover:text-white transition-colors"
+            className="p-2 rounded-xl bg-cinema-900 hover:bg-cinema-800 border border-cinema-700 text-cinema-300 hover:text-white transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center"
             title="Show QR Code for phone camera"
           >
             <QrCode size={16} />
           </button>
         </div>
 
-        {/* Right: Mobile toggle & Leave Room */}
+        {/* Right: Leave Room */}
         <div className="flex items-center gap-2">
-          {/* Mobile Chat / Participants Drawer Button */}
-          <button
-            onClick={() => setMobilePanelOpen(!mobilePanelOpen)}
-            className="lg:hidden p-2 rounded-xl bg-cinema-900 border border-cinema-700 text-cinema-300 hover:text-white flex items-center gap-1.5 text-xs"
-          >
-            <MessageSquare size={16} className="text-amber-cinema" />
-            <span>Chat ({messages.length})</span>
-          </button>
-
           <button
             onClick={() => router.push('/watch-together')}
-            className="p-2 sm:px-3 py-2 rounded-xl bg-cinema-900 hover:bg-red-500/20 hover:text-red-400 border border-cinema-750 text-cinema-400 transition-colors flex items-center gap-1.5 text-xs"
+            className="p-2 sm:px-3 py-2 rounded-xl bg-cinema-900 hover:bg-red-500/20 hover:text-red-400 border border-cinema-750 text-cinema-400 transition-colors flex items-center gap-1.5 text-xs min-h-[40px]"
             title="Leave watch party"
           >
             <LogOut size={16} />
@@ -371,7 +387,7 @@ export default function RoomPage() {
 
                 <button
                   onClick={() => localFileInputRef.current?.click()}
-                  className="px-3.5 py-1.5 rounded-xl bg-amber-cinema hover:bg-amber-hover text-cinema-950 font-bold text-xs shrink-0 flex items-center gap-1.5 shadow-sm"
+                  className="px-3.5 py-1.5 rounded-xl bg-amber-cinema hover:bg-amber-hover text-cinema-950 font-bold text-xs shrink-0 flex items-center gap-1.5 shadow-sm min-h-[40px]"
                 >
                   <FolderOpen size={13} />
                   <span>{localVideoFile ? 'Change Local Copy' : 'Choose Local File'}</span>
@@ -417,8 +433,8 @@ export default function RoomPage() {
             />
           )}
 
-          {/* Film Details Banner Under Video */}
-          <div className="p-5 rounded-2xl bg-cinema-850 border border-cinema-750/70 flex flex-col sm:flex-row items-start justify-between gap-4">
+          {/* Desktop Film Details Banner (Visible on large screens under video) */}
+          <div className="hidden lg:flex p-5 rounded-2xl bg-cinema-850 border border-cinema-750/70 items-start justify-between gap-4">
             <div>
               <h2 className="text-base font-semibold text-white mb-1">
                 About {room.movie.title}
@@ -438,35 +454,75 @@ export default function RoomPage() {
             </div>
           </div>
 
-          {/* Mobile Inline Social Chat & Presence (Visible on phones below video) */}
-          <div className="lg:hidden mt-2">
-            <RoomChat
-              participants={participants}
-              messages={messages}
-              onSendMessage={handleSendMessage}
-              onSendReaction={handleSendReaction}
-              currentUserId={currentUserId}
-            />
+          {/* Mobile Screen: Clean Integrated Tab Navigation below video */}
+          <div className="lg:hidden mt-2 space-y-3">
+            {/* Mobile Tab Toggle */}
+            <div className="grid grid-cols-2 p-1 rounded-xl bg-cinema-900 border border-cinema-800 text-xs font-semibold">
+              <button
+                onClick={() => setMobileTab('chat')}
+                className={`py-2 rounded-lg flex items-center justify-center gap-1.5 transition-all ${
+                  mobileTab === 'chat'
+                    ? 'bg-amber-cinema text-cinema-950 shadow-sm'
+                    : 'text-cinema-400 hover:text-white'
+                }`}
+              >
+                <MessageSquare size={14} />
+                <span>Live Chat & React ({messages.length})</span>
+              </button>
+              <button
+                onClick={() => setMobileTab('details')}
+                className={`py-2 rounded-lg flex items-center justify-center gap-1.5 transition-all ${
+                  mobileTab === 'details'
+                    ? 'bg-amber-cinema text-cinema-950 shadow-sm'
+                    : 'text-cinema-400 hover:text-white'
+                }`}
+              >
+                <Info size={14} />
+                <span>Movie & Party Details</span>
+              </button>
+            </div>
+
+            {/* Mobile Tab Content */}
+            {mobileTab === 'chat' ? (
+              <RoomChat
+                participants={participants}
+                messages={messages}
+                onSendMessage={handleSendMessage}
+                onSendReaction={handleSendReaction}
+                currentUserId={currentUserId}
+              />
+            ) : (
+              <div className="p-5 rounded-2xl bg-cinema-850 border border-cinema-750 space-y-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h2 className="text-base font-bold text-white mb-1">
+                      {room.movie.title}
+                    </h2>
+                    <p className="text-xs text-cinema-300 leading-relaxed">
+                      {room.movie.overview}
+                    </p>
+                  </div>
+                  <div className="shrink-0 flex flex-col items-end gap-1">
+                    <span className="px-2 py-0.5 rounded bg-cinema-900 border border-cinema-750 text-xs text-amber-cinema font-bold">
+                      ★ {room.movie.rating}
+                    </span>
+                    <span className="text-[11px] font-mono text-cinema-400">
+                      {room.movie.releaseYear}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-cinema-800 flex items-center justify-between text-xs text-cinema-400">
+                  <span>Host: <strong className="text-white">{room.hostNickname}</strong></span>
+                  <span>Active Viewers: <strong className="text-amber-cinema">{participants.length || 1}</strong></span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Side Panel: Live Chat, Participants, Reactions (Desktop 4 cols / Mobile modal) */}
-        <div
-          className={`lg:col-span-4 ${
-            mobilePanelOpen ? 'block fixed inset-x-4 bottom-4 top-20 z-50 lg:static lg:inset-auto' : 'hidden lg:block'
-          }`}
-        >
-          {mobilePanelOpen && (
-            <div className="lg:hidden flex justify-end mb-2">
-              <button
-                onClick={() => setMobilePanelOpen(false)}
-                className="px-3 py-1 rounded-full bg-cinema-800 text-white text-xs"
-              >
-                Close Chat ✕
-              </button>
-            </div>
-          )}
-
+        {/* Side Panel (Desktop only: 4 cols) */}
+        <div className="hidden lg:block lg:col-span-4">
           <RoomChat
             participants={participants}
             messages={messages}

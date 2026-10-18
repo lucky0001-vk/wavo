@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Play, Pause, Volume2, VolumeX, Maximize, RotateCcw, Activity, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Maximize, RotateCcw, Activity, ShieldCheck, AlertTriangle, RefreshCw, ArrowLeft } from 'lucide-react';
 import { PlaybackState } from '@/types';
 import { formatPlaybackTime, shouldCorrectDrift } from '@/lib/sync-engine';
 import { EmojiReactionOverlay, FloatingReaction } from './EmojiReactionOverlay';
+import { useRouter } from 'next/navigation';
 
 declare global {
   interface Window {
@@ -28,9 +29,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   onHostUpdatePlayback,
   reactions,
 }) => {
+  const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
   const playerContainerRef = useRef<HTMLDivElement>(null);
   const ytPlayerRef = useRef<any>(null);
+  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [isReady, setIsReady] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -40,6 +43,19 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [volume, setVolume] = useState(80);
   const [syncStatus, setSyncStatus] = useState<'in_sync' | 'syncing' | 'paused' | 'buffering'>('in_sync');
   const [hasError, setHasError] = useState(false);
+  const [autoplayBlocked, setAutoplayBlocked] = useState(false);
+  const [showControls, setShowControls] = useState(true);
+
+  // Auto-hide controls after inactivity
+  const handleInteraction = () => {
+    setShowControls(true);
+    if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+    controlsTimeoutRef.current = setTimeout(() => {
+      if (isPlaying) {
+        setShowControls(false);
+      }
+    }, 3500);
+  };
 
   // 1. Load YouTube IFrame API Script if not already loaded
   useEffect(() => {
@@ -70,7 +86,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
       try {
         if (ytPlayerRef.current) {
-          ytPlayerRef.current.destroy();
+          try {
+            ytPlayerRef.current.destroy();
+          } catch (e) {
+            // ignore
+          }
         }
 
         ytPlayerRef.current = new window.YT.Player(playerContainerRef.current, {
@@ -89,6 +109,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             onReady: (event: any) => {
               if (isCancelled) return;
               setIsReady(true);
+              setHasError(false);
               setDuration(event.target.getDuration() || 120);
 
               // Late-join sync
@@ -96,8 +117,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 const elapsed = (Date.now() - playbackState.updatedAt) / 1000;
                 const targetTime = playbackState.position + elapsed;
                 event.target.seekTo(targetTime, true);
-                event.target.playVideo();
-                setIsPlaying(true);
+                try {
+                  event.target.playVideo();
+                  setIsPlaying(true);
+                } catch {
+                  setAutoplayBlocked(true);
+                }
               } else {
                 event.target.seekTo(playbackState.position, true);
                 event.target.pauseVideo();
@@ -105,10 +130,9 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               }
             },
             onStateChange: (event: any) => {
-              if (!isHost) return;
-              // Host native player state changes
               if (event.data === window.YT?.PlayerState?.PLAYING) {
                 setIsPlaying(true);
+                setAutoplayBlocked(false);
                 setSyncStatus('in_sync');
               } else if (event.data === window.YT?.PlayerState?.PAUSED) {
                 setIsPlaying(false);
@@ -118,7 +142,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               }
             },
             onError: (err: any) => {
-              console.warn('YouTube Player Event Error:', err);
+              console.warn('YouTube Player Event Notice:', err);
               setHasError(true);
             },
           },
@@ -133,8 +157,13 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
     return () => {
       isCancelled = true;
+      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
       if (ytPlayerRef.current && typeof ytPlayerRef.current.destroy === 'function') {
-        ytPlayerRef.current.destroy();
+        try {
+          ytPlayerRef.current.destroy();
+        } catch (e) {
+          // ignore
+        }
         ytPlayerRef.current = null;
       }
     };
@@ -203,7 +232,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         setSyncStatus('paused');
       }
     } catch (e) {
-      console.warn('Playback synchronization correction catch:', e);
+      console.warn('Playback synchronization correction notice:', e);
     }
   }, [playbackState, isHost, isReady]);
 
@@ -218,6 +247,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     } else {
       if (ytPlayerRef.current) ytPlayerRef.current.playVideo();
       setIsPlaying(true);
+      setAutoplayBlocked(false);
       onHostUpdatePlayback('play', currentTime);
     }
   };
@@ -258,47 +288,104 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   const handleFullscreen = () => {
     if (!containerRef.current) return;
-    if (!document.fullscreenElement) {
-      containerRef.current.requestFullscreen().catch((err) => console.warn(err));
+    const isFs = !!(
+      document.fullscreenElement ||
+      (document as any).webkitFullscreenElement ||
+      (document as any).mozFullScreenElement
+    );
+
+    if (!isFs) {
+      if (containerRef.current.requestFullscreen) {
+        containerRef.current.requestFullscreen().catch(() => {});
+      } else if ((containerRef.current as any).webkitRequestFullscreen) {
+        (containerRef.current as any).webkitRequestFullscreen();
+      }
     } else {
-      document.exitFullscreen().catch((err) => console.warn(err));
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      } else if ((document as any).webkitExitFullscreen) {
+        (document as any).webkitExitFullscreen();
+      }
+    }
+  };
+
+  // Mobile Tap-to-play handler to unlock browser autoplay policy
+  const handleMobileUnlockPlay = () => {
+    setAutoplayBlocked(false);
+    if (ytPlayerRef.current) {
+      try {
+        ytPlayerRef.current.playVideo();
+        setIsPlaying(true);
+      } catch (e) {
+        console.warn('Mobile play error:', e);
+      }
     }
   };
 
   return (
     <div
       ref={containerRef}
-      className="relative w-full aspect-video bg-black rounded-3xl overflow-hidden border border-cinema-800 shadow-2xl flex flex-col justify-end group select-none"
+      onMouseMove={handleInteraction}
+      onTouchStart={handleInteraction}
+      className="relative w-full aspect-video bg-black rounded-3xl overflow-hidden border border-cinema-800 shadow-2xl flex flex-col justify-end group select-none touch-manipulation"
     >
       {/* Reaction animations overlay */}
       <EmojiReactionOverlay reactions={reactions} />
 
       {/* Video Container (YouTube Player target) */}
-      <div className="absolute inset-0 w-full h-full pointer-events-none sm:pointer-events-auto">
+      <div className="absolute inset-0 w-full h-full pointer-events-auto">
         <div ref={playerContainerRef} className="w-full h-full" />
       </div>
 
-      {/* Fallback if YouTube cannot load */}
-      {hasError && (
-        <div className="absolute inset-0 bg-cinema-950 flex flex-col items-center justify-center p-6 text-center z-10">
-          <AlertTriangle size={36} className="text-amber-cinema mb-3" />
-          <h4 className="text-base font-semibold text-white mb-1">Trailer Video Stream Notice</h4>
-          <p className="text-xs text-cinema-400 max-w-sm mb-4">
-            The publisher has restricted in-app playback for this trailer video. You can open the trailer on YouTube or reload.
-          </p>
-          <a
-            href={`https://www.youtube.com/watch?v=${mediaId}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-4 py-2 rounded-xl bg-amber-cinema text-cinema-950 text-xs font-semibold"
+      {/* Mobile Autoplay Policy Tap-to-Play Overlay */}
+      {autoplayBlocked && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <button
+            onClick={handleMobileUnlockPlay}
+            className="px-6 py-3.5 rounded-2xl bg-amber-cinema hover:bg-amber-hover text-cinema-950 font-bold text-sm shadow-glow-amber flex items-center gap-2.5 animate-pulse"
           >
-            Watch Directly on YouTube
-          </a>
+            <Play size={18} className="fill-cinema-950" />
+            <span>Tap to Start Playback</span>
+          </button>
+        </div>
+      )}
+
+      {/* In-App Fallback Notice (Zero external redirects) */}
+      {hasError && (
+        <div className="absolute inset-0 bg-cinema-950 flex flex-col items-center justify-center p-6 text-center z-30">
+          <AlertTriangle size={36} className="text-amber-cinema mb-3" />
+          <h4 className="text-base font-semibold text-white mb-1">Trailer Playback Notice</h4>
+          <p className="text-xs text-cinema-400 max-w-sm mb-5">
+            This video cannot be embedded inside the player. You can reload the stream or select an alternate title.
+          </p>
+          <div className="flex gap-3">
+            <button
+              onClick={() => {
+                setHasError(false);
+                setIsReady(false);
+              }}
+              className="px-4 py-2 rounded-xl bg-amber-cinema text-cinema-950 text-xs font-bold flex items-center gap-1.5"
+            >
+              <RefreshCw size={13} />
+              <span>Retry Stream</span>
+            </button>
+            <button
+              onClick={() => router.push('/watch-together')}
+              className="px-4 py-2 rounded-xl bg-cinema-850 hover:bg-cinema-800 text-cinema-200 border border-cinema-700 text-xs font-medium flex items-center gap-1.5"
+            >
+              <ArrowLeft size={13} />
+              <span>Browse Other Films</span>
+            </button>
+          </div>
         </div>
       )}
 
       {/* Top Overlay: Sync status pill & Host indicator */}
-      <div className="absolute top-4 left-4 right-4 flex items-center justify-between pointer-events-none z-20">
+      <div
+        className={`absolute top-4 left-4 right-4 flex items-center justify-between pointer-events-none z-20 transition-opacity duration-300 ${
+          showControls ? 'opacity-100' : 'opacity-0'
+        }`}
+      >
         {/* Sync Status Badge */}
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-cinema-950/80 backdrop-blur-md border border-cinema-750 text-xs font-mono">
           <span
@@ -329,7 +416,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       </div>
 
       {/* Bottom Custom Playback Controls Bar */}
-      <div className="relative z-30 p-4 bg-gradient-to-t from-black/90 via-black/50 to-transparent opacity-95 group-hover:opacity-100 transition-opacity">
+      <div
+        className={`relative z-20 p-4 bg-gradient-to-t from-black/95 via-black/60 to-transparent transition-opacity duration-300 ${
+          showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
+      >
         {/* Seek timeline bar */}
         <div className="flex items-center gap-3 mb-2.5">
           <span className="text-xs font-mono text-cinema-300 w-12">
@@ -361,14 +452,14 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             {isHost ? (
               <button
                 onClick={handleTogglePlay}
-                className="w-10 h-10 rounded-xl bg-amber-cinema hover:bg-amber-hover text-cinema-950 flex items-center justify-center transition-all shadow-glow-amber"
+                className="w-10 h-10 rounded-xl bg-amber-cinema hover:bg-amber-hover text-cinema-950 flex items-center justify-center transition-all shadow-glow-amber cursor-pointer min-h-[44px] min-w-[44px]"
                 aria-label={isPlaying ? 'Pause' : 'Play'}
               >
                 {isPlaying ? <Pause size={18} className="fill-cinema-950" /> : <Play size={18} className="fill-cinema-950 ml-0.5" />}
               </button>
             ) : (
               <div
-                className="w-10 h-10 rounded-xl bg-cinema-800 text-cinema-400 flex items-center justify-center cursor-not-allowed"
+                className="w-10 h-10 rounded-xl bg-cinema-800 text-cinema-400 flex items-center justify-center cursor-not-allowed min-h-[44px] min-w-[44px]"
                 title="Only host can pause or play"
               >
                 {isPlaying ? <Activity size={18} className="text-emerald-400" /> : <Pause size={18} />}
@@ -379,7 +470,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             <div className="flex items-center gap-2">
               <button
                 onClick={handleToggleMute}
-                className="p-2 rounded-lg text-cinema-300 hover:text-white hover:bg-cinema-800 transition-colors"
+                className="p-2 rounded-lg text-cinema-300 hover:text-white hover:bg-cinema-800 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
                 aria-label={isMuted ? 'Unmute' : 'Mute'}
               >
                 {isMuted || volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
@@ -399,7 +490,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             {/* Fullscreen Button */}
             <button
               onClick={handleFullscreen}
-              className="p-2 rounded-lg text-cinema-300 hover:text-white hover:bg-cinema-800 transition-colors"
+              className="p-2 rounded-lg text-cinema-300 hover:text-white hover:bg-cinema-800 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
               aria-label="Fullscreen"
             >
               <Maximize size={18} />

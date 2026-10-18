@@ -473,15 +473,10 @@ export default function MediaBrowserPage() {
                   </button>
                 </div>
 
-                <a
-                  href={selectedProvider.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-cinema-400 hover:text-white flex items-center gap-1 underline underline-offset-4 self-end sm:self-auto"
-                >
-                  <span>Open {selectedProvider.name} Companion Tab (External)</span>
-                  <ExternalLink size={12} />
-                </a>
+                <div className="text-xs text-cinema-400 flex items-center gap-1.5 self-end sm:self-auto bg-cinema-900 border border-cinema-750 px-3 py-1.5 rounded-xl">
+                  <ShieldCheck size={14} className="text-amber-cinema" />
+                  <span>Hardware DRM Active • Stay in Wavo for Synced Party</span>
+                </div>
               </div>
             </div>
           )}
