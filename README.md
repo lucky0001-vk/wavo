@@ -1,4 +1,4 @@
-**Live Website**: [https://marks-housing-detected-agency.trycloudflare.com](https://marks-housing-detected-agency.trycloudflare.com)
+**Live Website**: [https://downloads-commercial-beginners-karma.trycloudflare.com](https://downloads-commercial-beginners-karma.trycloudflare.com)
 
 # Wavo — Rave-Style Social Watch Platform & Mood-Based Media Discovery
 
@@ -7,7 +7,7 @@
   <p><strong>Discover together. Watch in sync. Anywhere, on any device.</strong></p>
 
   <p>
-    <strong>🌐 Live Deployed Website:</strong> <a href="https://marks-housing-detected-agency.trycloudflare.com"><strong>https://marks-housing-detected-agency.trycloudflare.com</strong></a>
+    <strong>🌐 Live Deployed Website:</strong> <a href="https://downloads-commercial-beginners-karma.trycloudflare.com"><strong>https://downloads-commercial-beginners-karma.trycloudflare.com</strong></a>
   </p>
 
   <p>
